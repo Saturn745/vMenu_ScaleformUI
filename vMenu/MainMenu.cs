@@ -618,7 +618,7 @@ namespace vMenuClient
 
             UIMenuItem playerSubmenuBtn = new UIMenuItem("Player Related Options", "Open this submenu for player related subcategories.");
             playerSubmenuBtn.SetRightLabel("→→→");
-            Menu.AddItem(playerSubmenuBtn);
+            AddMenu(Menu, PlayerSubmenu, playerSubmenuBtn);
 
             // Add the player options menu.
             if (IsAllowed(Permission.POMenu))
