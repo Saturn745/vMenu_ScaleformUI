@@ -632,7 +632,7 @@ namespace vMenuClient
 
             UIMenuItem vehicleSubmenuBtn = new UIMenuItem("Vehicle Related Options", "Open this submenu for vehicle related subcategories.");
             vehicleSubmenuBtn.SetRightLabel("→→→");
-            Menu.AddItem(vehicleSubmenuBtn);
+            AddMenu(Menu, VehicleSubmenu, vehicleSubmenuBtn);
             // Add the vehicle options Menu.
             if (IsAllowed(Permission.VOMenu))
             {
