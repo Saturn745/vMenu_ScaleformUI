@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using ScaleformUI.Elements;
 using ScaleformUI.Menu;
 
 using vMenuClient.data;
@@ -951,17 +952,35 @@ namespace vMenuClient.menus
                 listIdx++;
             }
 
-            UIMenuListItem inheritanceDads = new UIMenuListItem("Father", dads.Keys.Cast<dynamic>().ToList(), 0, "Select a father.");
-            UIMenuListItem inheritanceMoms = new UIMenuListItem("Mother", moms.Keys.Cast<dynamic>().ToList(), 0, "Select a mother.");
-            List<float> mixValues = new List<float>() { 0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
-            UIMenuSliderItem inheritanceShapeMix = new UIMenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true);
-            UIMenuSliderItem inheritanceSkinMix = new UIMenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 0, 10, 5, true);
+            UIMenuHeritageWindow heritageWindow = new UIMenuHeritageWindow(0, 0);
+            UIMenuDetailsWindow statsWindow = new UIMenuDetailsWindow("Parents resemblance", "Dad:", "Mom:", true, new List<UIDetailStat>());
+            inheritanceMenu.AddWindow(heritageWindow);
+            inheritanceMenu.AddWindow(statsWindow);
+            List<dynamic> momfaces = new List<dynamic>() { "Hannah", "Audrey", "Jasmine", "Giselle", "Amelia", "Isabella", "Zoe", "Ava", "Camilla", "Violet", "Sophia", "Eveline", "Nicole", "Ashley", "Grace", "Brianna", "Natalie", "Olivia", "Elizabeth", "Charlotte", "Emma", "Misty" };
+            List<dynamic> dadfaces = new List<dynamic>() { "Benjamin", "Daniel", "Joshua", "Noah", "Andrew", "Joan", "Alex", "Isaac", "Evan", "Ethan", "Vincent", "Angel", "Diego", "Adrian", "Gabriel", "Michael", "Santiago", "Kevin", "Louis", "Samuel", "Anthony", "Claude", "Niko", "John" };
+            UIMenuListItem inheritanceMoms = new UIMenuListItem("Mamma", momfaces, 0);
+            UIMenuListItem inheritanceDads = new UIMenuListItem("Papà", dadfaces, 0);
+            var mixValues = new List<float>() { 0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f };
 
-            inheritanceMenu.AddItem(inheritanceDads);
+            UIMenuSliderItem inheritanceShapeMix = new UIMenuSliderItem("Head Shape Mix", "Select how much of your head shape should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 10, 1, 5, true);
+            UIMenuSliderItem inheritanceSkinMix = new UIMenuSliderItem("Body Skin Mix", "Select how much of your body skin tone should be inherited from your father or mother. All the way on the left is your dad, all the way on the right is your mom.", 10, 1, 5, true);
+            float momPercentage = 100f;
+            float dadPercentage = 0f;
+            CalculatePercentage(ref momPercentage, ref dadPercentage);
+            statsWindow.DetailMid = "Dad: " + dadPercentage + "%";
+            statsWindow.DetailBottom = "Mom: " + momPercentage + "%";
+            statsWindow.DetailStats = new List<UIDetailStat>()
+            {
+                new UIDetailStat((int) momPercentage, SColor.HUD_Pink),
+                new UIDetailStat((int) dadPercentage, SColor.HUD_Freemode),
+            };
+            
             inheritanceMenu.AddItem(inheritanceMoms);
+            inheritanceMenu.AddItem(inheritanceDads);
             inheritanceMenu.AddItem(inheritanceShapeMix);
             inheritanceMenu.AddItem(inheritanceSkinMix);
-
+            int MomIndex = 0;
+            int DadIndex = 0;
             // formula from maintransition.#sc
             float GetMinimum()
             {
@@ -979,7 +998,7 @@ namespace vMenuClient.menus
                 float min = GetMinimum();
                 float max = GetMaximum();
 
-                return min + (sliderFraction * (max - min));
+                return max - (sliderFraction * (max - min));
             }
 
             int UnclampMix(float value)
@@ -990,14 +1009,43 @@ namespace vMenuClient.menus
                 float origFraction = (value - min) / (max - min);
                 return Math.Max(Math.Min((int)(origFraction * 10), 10), 0);
             }
+            
+            void CalculatePercentage(ref float momPercentage, ref float dadPercentage)
+            {
+                float inheritanceShapeValue = inheritanceShapeMix.Value;
+                float inheritanceSkinValue = inheritanceSkinMix.Value;
+
+                float totalValue = inheritanceShapeValue + inheritanceSkinValue;
+                float middleValue = totalValue / 2.0f;
+
+                momPercentage = (10.0f - middleValue) / 10.0f * 100;
+                dadPercentage = middleValue / 10.0f * 100;
+            }
 
             void SetHeadBlend()
             {
-                SetPedHeadBlendData(Game.PlayerPed.Handle, GetInheritance(dads, inheritanceDads), GetInheritance(moms, inheritanceMoms), 0, GetInheritance(dads, inheritanceDads), GetInheritance(moms, inheritanceMoms), 0, ClampMix(inheritanceShapeMix.Value), ClampMix(inheritanceSkinMix.Value), 0f, true);
+                CalculatePercentage(ref momPercentage, ref dadPercentage);
+                statsWindow.DetailStats[0].Percentage = (int) momPercentage;
+                statsWindow.DetailStats[0].HudColor = SColor.HUD_Pink;
+                statsWindow.DetailStats[1].Percentage = (int) dadPercentage;
+                statsWindow.DetailStats[1].HudColor = SColor.HUD_Freemode;
+                statsWindow.UpdateStatsToWheel();
+                statsWindow.UpdateLabels("Parents resemblance", "Dad: " + dadPercentage + "%", "Mom: " + (momPercentage) + "%");
+                SetPedHeadBlendData(Game.PlayerPed.Handle, DadIndex, MomIndex, 0, DadIndex, MomIndex, 0, ClampMix(inheritanceShapeMix.Value), ClampMix(inheritanceSkinMix.Value), 0f, true);
             }
 
             inheritanceMenu.OnListChange += (_menu, listItem, itemIndex) =>
             {
+                if (listItem == inheritanceMoms)
+                {
+                    MomIndex = itemIndex;
+                    heritageWindow.Index(MomIndex, DadIndex);
+                }
+                else if (listItem == inheritanceDads)
+                {
+                    DadIndex = itemIndex;
+                    heritageWindow.Index(MomIndex, DadIndex);
+                }
                 SetHeadBlend();
             };
 
